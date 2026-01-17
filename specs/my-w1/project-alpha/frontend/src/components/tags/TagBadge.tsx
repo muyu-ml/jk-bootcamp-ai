@@ -14,21 +14,33 @@ export function TagBadge({ tag, onRemove, variant = 'default', className }: TagB
   return (
     <Badge
       variant={variant}
-      className={cn('flex items-center gap-1', className)}
+      className={cn(
+        'flex items-center gap-1.5 transition-all duration-200',
+        variant === 'outline' && 'hover:shadow-sm',
+        className
+      )}
       style={
         variant === 'outline'
-          ? { borderColor: tag.color, color: tag.color }
-          : { backgroundColor: tag.color, borderColor: tag.color, color: '#fff' }
+          ? { 
+              borderColor: tag.color + '40', 
+              color: tag.color,
+              backgroundColor: tag.color + '10'
+            }
+          : { 
+              backgroundColor: tag.color, 
+              borderColor: tag.color, 
+              color: '#fff' 
+            }
       }
     >
-      <span className="text-xs font-medium">{tag.name}</span>
+      <span className="text-xs font-medium leading-none">{tag.name}</span>
       {onRemove && (
         <button
           onClick={(e) => {
             e.stopPropagation()
             onRemove()
           }}
-          className="ml-1 rounded-full hover:bg-black/20"
+          className="ml-0.5 rounded-full p-0.5 hover:bg-black/20 transition-colors duration-200 active:scale-95"
         >
           <X className="h-3 w-3" />
         </button>

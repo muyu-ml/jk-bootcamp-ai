@@ -158,12 +158,14 @@ function App() {
       <Header onNewTicket={handleNewTicket} />
       <div className="flex">
         <FilterSidebar />
-        <main className="flex-1 p-6">
-          <TicketList
-            onEdit={handleEditTicket}
-            onDelete={handleDeleteTicket}
-            onToggleComplete={handleToggleComplete}
-          />
+        <main className="flex-1 p-8 lg:p-12">
+          <div className="max-w-7xl mx-auto">
+            <TicketList
+              onEdit={handleEditTicket}
+              onDelete={handleDeleteTicket}
+              onToggleComplete={handleToggleComplete}
+            />
+          </div>
         </main>
       </div>
 
