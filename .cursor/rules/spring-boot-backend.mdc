@@ -1,0 +1,572 @@
+---
+description: Enforce the use of Spring Boot and its ecosystem for all Java API backends
+globs: ["**/backend/**/*.java", "**/src/**/*.java", "**/api/**/*.java"]
+alwaysApply: false
+---
+
+# Spring Boot Backend Rules
+
+## Framework and Core Dependencies
+
+For all Java API backend development, use **Spring Boot** and its ecosystem:
+
+### Required Core Stack
+- **Spring Boot** (2.7.x) - Compatible with JDK 8
+- **Spring Web** - RESTful web services
+- **Spring Data JPA** - Data persistence
+- **Spring Boot Starter Validation** - Bean validation
+- **Spring Boot Starter Actuator** - Production-ready features
+
+### Database and ORM
+- **Spring Data JPA** - JPA-based data access layer
+- **Hibernate** (5.6.x) - JPA implementation (included with Spring Boot)
+- **H2 Database** (for development/testing) or **PostgreSQL** (for production)
+- **Flyway** or **Liquibase** - Database migration tool
+
+### Development Tools
+- **Spring Boot DevTools** - Development-time features
+- **Lombok** - Reduce boilerplate code
+- **MapStruct** - Type-safe bean mapping
+- **JUnit 5** - Testing framework
+- **Mockito** - Mocking framework
+- **Spring Boot Test** - Integration testing support
+
+## Code Structure and Patterns
+
+### Application Structure
+```
+src/
+├── main/
+│   ├── java/
+│   │   └── com/
+│   │       └── liconglong/
+│   │           └── learn/
+│   │               ├── LearnApplication.java          # Main application class
+│   │               ├── config/                        # Configuration classes
+│   │               │   ├── DatabaseConfig.java
+│   │               │   └── WebConfig.java
+│   │               ├── controller/                    # REST controllers
+│   │               │   ├── BaseController.java
+│   │               │   └── *.Controller.java
+│   │               ├── service/                       # Business logic
+│   │               │   ├── BaseService.java
+│   │               │   └── *.Service.java
+│   │               ├── repository/                    # Data access layer
+│   │               │   ├── BaseRepository.java
+│   │               │   └── *.Repository.java
+│   │               ├── entity/                        # JPA entities
+│   │               │   └── *.java
+│   │               ├── dto/                           # Data Transfer Objects
+│   │               │   ├── request/
+│   │               │   │   └── *.java
+│   │               │   └── response/
+│   │               │       └── *.java
+│   │               ├── exception/                     # Exception handling
+│   │               │   ├── GlobalExceptionHandler.java
+│   │               │   └── *.Exception.java
+│   │               └── util/                          # Utility classes
+│   │                   └── *.java
+│   └── resources/
+│       ├── application.yml                            # Application configuration
+│       ├── application-dev.yml                        # Development profile
+│       ├── application-prod.yml                       # Production profile
+│       └── db/migration/                             # Flyway migrations
+│           └── V1__Initial_schema.sql
+└── test/
+    └── java/
+        └── com/
+            └── liconglong/
+                └── learn/
+                    ├── controller/                    # Controller tests
+                    ├── service/                       # Service tests
+                    └── repository/                    # Repository tests
+```
+
+### Package Naming Convention
+
+**All packages MUST start with `com.liconglong.learn`**
+
+Examples:
+- `com.liconglong.learn.controller`
+- `com.liconglong.learn.service`
+- `com.liconglong.learn.repository`
+- `com.liconglong.learn.entity`
+- `com.liconglong.learn.dto`
+
+### Spring Boot Application Setup
+
+```java
+package com.liconglong.learn;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+
+@SpringBootApplication
+@EnableJpaAuditing
+public class LearnApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(LearnApplication.class, args);
+    }
+}
+```
+
+### Configuration Management
+
+Use **application.yml** for configuration:
+
+```yaml
+spring:
+  application:
+    name: learn-api
+  datasource:
+    url: jdbc:postgresql://localhost:5432/learn_db
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+logging:
+  level:
+    com.liconglong.learn: DEBUG
+    org.springframework.web: INFO
+```
+
+### Entity Classes
+
+Use JPA entities with proper annotations:
+
+```java
+package com.liconglong.learn.entity;
+
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import javax.persistence.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "items")
+@Data
+@EqualsAndHashCode(callSuper = false)
+@EntityListeners(AuditingEntityListener.class)
+public class Item {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(length = 500)
+    private String description;
+
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+}
+```
+
+### Repository Layer
+
+Use Spring Data JPA repositories:
+
+```java
+package com.liconglong.learn.repository;
+
+import com.liconglong.learn.entity.Item;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface ItemRepository extends JpaRepository<Item, Long> {
+    Optional<Item> findByName(String name);
+    
+    @Query("SELECT i FROM Item i WHERE i.name LIKE %:keyword%")
+    List<Item> searchByName(@Param("keyword") String keyword);
+}
+```
+
+### Service Layer
+
+Implement business logic in service classes:
+
+```java
+package com.liconglong.learn.service;
+
+import com.liconglong.learn.dto.request.ItemCreateRequest;
+import com.liconglong.learn.dto.response.ItemResponse;
+import com.liconglong.learn.entity.Item;
+import com.liconglong.learn.repository.ItemRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class ItemService {
+    private final ItemRepository itemRepository;
+
+    @Transactional
+    public ItemResponse createItem(ItemCreateRequest request) {
+        Item item = new Item();
+        item.setName(request.getName());
+        item.setDescription(request.getDescription());
+        Item savedItem = itemRepository.save(item);
+        return convertToResponse(savedItem);
+    }
+
+    public List<ItemResponse> getAllItems() {
+        return itemRepository.findAll().stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
+    public ItemResponse getItemById(Long id) {
+        Item item = itemRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Item not found"));
+        return convertToResponse(item);
+    }
+
+    private ItemResponse convertToResponse(Item item) {
+        ItemResponse response = new ItemResponse();
+        response.setId(item.getId());
+        response.setName(item.getName());
+        response.setDescription(item.getDescription());
+        response.setCreatedAt(item.getCreatedAt());
+        response.setUpdatedAt(item.getUpdatedAt());
+        return response;
+    }
+}
+```
+
+### Controller Layer
+
+Use REST controllers with proper annotations:
+
+```java
+package com.liconglong.learn.controller;
+
+import com.liconglong.learn.dto.request.ItemCreateRequest;
+import com.liconglong.learn.dto.response.ItemResponse;
+import com.liconglong.learn.service.ItemService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
+import java.util.List;
+
+@RestController
+@RequestMapping("/v1/items")
+@RequiredArgsConstructor
+public class ItemController {
+    private final ItemService itemService;
+
+    @PostMapping
+    public ResponseEntity<ItemResponse> createItem(
+            @Valid @RequestBody ItemCreateRequest request) {
+        ItemResponse response = itemService.createItem(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<ItemResponse>> getAllItems() {
+        List<ItemResponse> items = itemService.getAllItems();
+        return ResponseEntity.ok(items);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ItemResponse> getItemById(@PathVariable Long id) {
+        ItemResponse item = itemService.getItemById(id);
+        return ResponseEntity.ok(item);
+    }
+}
+```
+
+### DTO Classes
+
+Use DTOs for request/response:
+
+```java
+package com.liconglong.learn.dto.request;
+
+import lombok.Data;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
+
+@Data
+public class ItemCreateRequest {
+    @NotBlank(message = "Name is required")
+    @Size(min = 1, max = 100, message = "Name must be between 1 and 100 characters")
+    private String name;
+
+    @Size(max = 500, message = "Description must not exceed 500 characters")
+    private String description;
+}
+```
+
+```java
+package com.liconglong.learn.dto.response;
+
+import lombok.Data;
+import java.time.LocalDateTime;
+
+@Data
+public class ItemResponse {
+    private Long id;
+    private String name;
+    private String description;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+}
+```
+
+### Exception Handling
+
+Implement global exception handler:
+
+```java
+package com.liconglong.learn.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, String>> handleValidationExceptions(
+            MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getAllErrors().forEach((error) -> {
+            String fieldName = ((FieldError) error).getField();
+            String errorMessage = error.getDefaultMessage();
+            errors.put(fieldName, errorMessage);
+        });
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<Map<String, String>> handleRuntimeException(
+            RuntimeException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+}
+```
+
+### Testing
+
+Use JUnit 5 and Mockito for testing:
+
+```java
+package com.liconglong.learn.service;
+
+import com.liconglong.learn.dto.request.ItemCreateRequest;
+import com.liconglong.learn.dto.response.ItemResponse;
+import com.liconglong.learn.entity.Item;
+import com.liconglong.learn.repository.ItemRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class ItemServiceTest {
+    @Mock
+    private ItemRepository itemRepository;
+
+    @InjectMocks
+    private ItemService itemService;
+
+    private Item item;
+
+    @BeforeEach
+    void setUp() {
+        item = new Item();
+        item.setId(1L);
+        item.setName("Test Item");
+        item.setDescription("Test Description");
+    }
+
+    @Test
+    void testCreateItem() {
+        ItemCreateRequest request = new ItemCreateRequest();
+        request.setName("Test Item");
+        request.setDescription("Test Description");
+
+        when(itemRepository.save(any(Item.class))).thenReturn(item);
+
+        ItemResponse response = itemService.createItem(request);
+
+        assertNotNull(response);
+        assertEquals("Test Item", response.getName());
+        verify(itemRepository, times(1)).save(any(Item.class));
+    }
+}
+```
+
+## Best Practices
+
+1. **Package Structure**: Always use `com.liconglong.learn` as the base package
+2. **Lombok**: Use Lombok annotations (`@Data`, `@RequiredArgsConstructor`, `@Builder`) to reduce boilerplate
+3. **Validation**: Use `@Valid` and Bean Validation annotations for request validation
+4. **Transaction Management**: Use `@Transactional` appropriately (read-only for queries)
+5. **Exception Handling**: Implement global exception handler for consistent error responses
+6. **DTO Pattern**: Always use DTOs for request/response, never expose entities directly
+7. **Repository Pattern**: Use Spring Data JPA repositories, extend `JpaRepository`
+8. **Service Layer**: Keep controllers thin, put business logic in service layer
+9. **Database Migrations**: Use Flyway or Liquibase for schema versioning
+10. **Testing**: Write unit tests for services and integration tests for controllers
+11. **Configuration**: Use `application.yml` with profiles (dev, prod)
+12. **Logging**: Use SLF4J with Logback, configure appropriate log levels
+
+## Prohibited Patterns
+
+- ❌ Do NOT use `@Autowired` field injection (use constructor injection with `@RequiredArgsConstructor`)
+- ❌ Do NOT expose JPA entities directly in controllers (use DTOs)
+- ❌ Do NOT use `@Transactional` on controller methods
+- ❌ Do NOT use `System.out.println` for logging (use SLF4J)
+- ❌ Do NOT hardcode configuration values (use `application.yml` and `@Value`)
+- ❌ Do NOT use `ddl-auto: create-drop` in production
+- ❌ Do NOT ignore exceptions (handle them properly)
+- ❌ Do NOT use `java.util.Date` (use `java.time.*` classes)
+- ❌ Do NOT use package names other than `com.liconglong.learn.*`
+
+## Version Requirements
+
+- **Java**: JDK 8 (1.8)
+- **Spring Boot**: 2.7.x (last version supporting JDK 8)
+- **Spring Framework**: 5.3.x
+- **Hibernate**: 5.6.x
+- **Lombok**: Latest compatible version
+- **JUnit**: 5.x
+- **Mockito**: 4.x
+
+## Maven Dependencies Example
+
+```xml
+<parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>2.7.18</version>
+    <relativePath/>
+</parent>
+
+<properties>
+    <java.version>1.8</java.version>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+</properties>
+
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <scope>runtime</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-core</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <optional>true</optional>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-test</artifactId>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
+```
+
+## Gradle Dependencies Example
+
+```gradle
+plugins {
+    id 'org.springframework.boot' version '2.7.18'
+    id 'io.spring.dependency-management' version '1.0.15.RELEASE'
+    id 'java'
+}
+
+group = 'com.liconglong.learn'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.8'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    runtimeOnly 'org.postgresql:postgresql'
+    implementation 'org.flywaydb:flyway-core'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+```
