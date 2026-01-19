@@ -34,7 +34,9 @@
 ## 优化 UI
 按照 apple website 的设计风格，think ultra hard，优化 UI 和 UX。
 
-## 在根目录下 Makefile 里添加启动 app 的方法，不要使用 start.sh 的方式
+## 启动方式
+在根目录下 Makefile 里添加启动 app 的方法，不要使用 start.sh 的方式
+更新 Makefile，为所有 target 天街 “w1-” 前缀，并重构合并的 target
 
 ## 代码提交
 1、将原有的远程仓库地址设置为新项目fork地址（即该代码是从哪个仓库fork的）
