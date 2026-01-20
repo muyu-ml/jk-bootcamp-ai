@@ -24,7 +24,7 @@ htmlcov/
 # Test databases
 test.db
 *.db
-
+*.vscode
 
 .vscode
 .vite
